@@ -1,54 +1,66 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { InvalidEmailPasswordError } from "./utils/errors"
+import { InactiveAccountError, InvalidEmailPasswordError } from "./utils/errors"
 import { sendRequest } from "./utils/api"
-import Password from "antd/es/input/Password"
 import { IUser } from "./types/next-auth"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-    providers: [
-        Credentials({
-            //const r=await onFinish();
-            credentials: {
-                email: {},
-                password: {},
-            },
-            authorize: async (credentials) => {
-                const user = await sendRequest<IBackendRes<Ilogin>>({
-                    method: "POST",
-                    url: "http://localhost:8080/api/v1/auth/login",
-                    body: {
-                        username: credentials.email,
-                        password: credentials.password,
-                    },
-                })
+  providers: [
+    Credentials({
+      // You can specify which fields should be submitted, by adding keys to the `credentials` object.
+      // e.g. domain, username, password, 2FA token, etc.
+      credentials: {
+        username: {},
+        password: {},
+      },
+      authorize: async (credentials) => {
+        const res = await sendRequest<IBackendRes<ILogin>>({
+          method: "POST",
+          url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`,
+          body: {
+            username: credentials.username,
+            password: credentials.password
+          }
+        })
 
-                console.log(">>>check user:", user);
-                return {
-                    _id: user.data?.user._id,
-                    name: user.data?.user.name,
-                    email: user.data?.user.email,
-                    access_token: user.data?.access_token,
-                }
-            },
-        }),],
-    //  By default, the `id` property does not exist on `token` or `session`. See the [TypeScript](https://authjs.dev/getting-started/typescript) on how to add it.
-    callbacks: {
-        jwt({ token, user }) {
-            if (user) { // User is available during sign-in
-                token.user = (user as IUser)
-            }
-            return token
-        },
-        session({ session, token }) {
-            (session.user as IUser) = token.user;
-            return session
-        },
+        if (res.statusCode === 201) {
+          // return user object with their profile data
+
+          return {
+            _id: res.data?.user?._id,
+            name: res.data?.user?.name,
+            email: res.data?.user?.email,
+            access_token: res.data?.access_token,
+          };
+        } else if (+res.statusCode === 401) {
+          throw new InvalidEmailPasswordError()
+        } else if (+res.statusCode === 400) {
+          throw new InactiveAccountError()
+        } else {
+          throw new Error("Internal server error")
+        }
+
+      },
+    }),
+  ],
+  pages: {
+    signIn: "/auth/login",
+  },
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) { // User is available during sign-in
+        token.user = (user as IUser);
+      }
+      return token
     },
-    pages: {
-        signIn: "/auth/login",
-        error: "/auth/login",
+    session({ session, token }) {
+      (session.user as IUser) = token.user;
+      return session
     },
+    authorized: async ({ auth }) => {
+      // Logged in users are authenticated, 
+      //otherwise redirect to login page
+      return !!auth
+    },
+  },
 })
-
-

@@ -3,7 +3,6 @@ import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { UsersModule } from '@/modules/users/users.module';
 import { LikesModule } from '@/modules/likes/likes.module';
-
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MenuItemOptionsModule } from '@/modules/menu.item.options/menu.item.options.module';
@@ -14,10 +13,11 @@ import { OrdersModule } from '@/modules/orders/orders.module';
 import { RestaurantsModule } from '@/modules/restaurants/restaurants.module';
 import { ReviewsModule } from '@/modules/reviews/reviews.module';
 import { AuthModule } from '@/auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { TransformInterceptor } from '@/core/transform.interceptor';
 
 @Module({
   imports: [
@@ -30,6 +30,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
     OrdersModule,
     RestaurantsModule,
     ReviewsModule,
+    AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -38,28 +39,24 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
       }),
       inject: [ConfigService],
     }),
-    AuthModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        //uri: configService.get<string>('MONGODB_URI'),
         transport: {
-          host: configService.get<string>('MAIL_HOST'),
+          host: "smtp.gmail.com",
           port: 465,
           secure: true,
-          // host: 'localhost',
-          // port: 1025,
           // ignoreTLS: true,
           // secure: false,
           auth: {
             user: configService.get<string>('MAIL_USER'),
-            pass: configService.get<string>('MAIL_APP_PASSWORD'),
+            pass: configService.get<string>('MAIL_PASSWORD'),
           },
         },
         defaults: {
           from: '"No Reply" <no-reply@localhost>',
         },
-        //preview: true,
+        // preview: true,
         template: {
           dir: process.cwd() + '/src/mail/templates/',
           adapter: new HandlebarsAdapter(), // or new PugAdapter() or new EjsAdapter()
@@ -69,7 +66,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
         },
       }),
       inject: [ConfigService],
-      
+
     }),
   ],
   controllers: [AppController],
@@ -78,6 +75,10 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     }
   ],
 })

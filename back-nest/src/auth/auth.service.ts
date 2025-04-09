@@ -1,11 +1,8 @@
-
-import { comparePasswordHelper } from '@/helpers/Util';
-import { UsersService } from '@/modules/users/users.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { UsersService } from '@/modules/users/users.service';
+import { comparePasswordHelper } from '@/helpers/util';
 import { JwtService } from '@nestjs/jwt';
-import { access } from 'fs';
-import { CreateAuthDto } from './dto/create-auth.dto';
-
+import { ChangePasswordAuthDto, CodeAuthDto, CreateAuthDto } from './dto/create-auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -14,17 +11,16 @@ export class AuthService {
     private jwtService: JwtService
   ) { }
 
+
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
-    if (!user) {
-      throw new UnauthorizedException("tài khoản không đúng");
-    }
+    if (!user) return null;
+
     const isValidPassword = await comparePasswordHelper(pass, user.password);
-    if (!isValidPassword) {
-      throw new UnauthorizedException("mật khẩu không đúng");
-    }
+    if (!isValidPassword) return null;
     return user;
   }
+
   async login(user: any) {
     const payload = { username: user.email, sub: user._id };
     return {
@@ -37,7 +33,24 @@ export class AuthService {
     };
   }
 
-  async hanldeRegister(registerDto: CreateAuthDto) {
-    return await this.usersService.hanldeRegister(registerDto);
+  handleRegister = async (registerDto: CreateAuthDto) => {
+    return await this.usersService.handleRegister(registerDto);
   }
+
+  checkCode = async (data: CodeAuthDto) => {
+    return await this.usersService.handleActive(data);
+  }
+
+  retryActive = async (data: string) => {
+    return await this.usersService.retryActive(data);
+  }
+
+  retryPassword = async (data: string) => {
+    return await this.usersService.retryPassword(data);
+  }
+
+  changePassword = async (data: ChangePasswordAuthDto) => {
+    return await this.usersService.changePassword(data);
+  }
+
 }

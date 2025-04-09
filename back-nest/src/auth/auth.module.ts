@@ -13,18 +13,18 @@ import { JwtStrategy } from './passport/jwt.strategy';
     UsersModule,
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
-        global:true,
+        global: true,
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-            expiresIn: configService.get<string>('JWT_ACCESS_TOKEN_EXPIRED'),
+          expiresIn: configService.get<string>('JWT_ACCESS_TOKEN_EXPIRED'),
         },
       }),
       inject: [ConfigService],
     }),
-    UsersModule, 
-    PassportModule,
+    PassportModule
   ],
+
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy,JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy],
 })
-export class AuthModule {}
+export class AuthModule { }

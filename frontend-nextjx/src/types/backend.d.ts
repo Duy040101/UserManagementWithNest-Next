@@ -28,14 +28,14 @@ declare global {
         },
         result: T[]
     }
-    interface Ilogin{
-        user:{
-            _id : string;
+
+    interface ILogin {
+        user: {
+            _id: string;
             name: string;
             email: string;
-        },
+        }
         access_token: string;
-        
     }
 
 }
